@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { createSessionToken, SESSION_COOKIE } from '@/lib/auth';
 
 export async function POST(req) {
   try {
@@ -12,9 +13,11 @@ export async function POST(req) {
       return NextResponse.json({ error: 'كلمة المرور غير صحيحة' }, { status: 401 });
     }
 
-    // إرسال رد النجاح وتعيين كوكي الجلسة مباشرة
+    // إنشاء توكن الجلسة المعتمد في التطبيق
+    const token = await createSessionToken(role);
     const res = NextResponse.json({ ok: true, role });
-    res.cookies.set('session', role, {
+
+    res.cookies.set(SESSION_COOKIE, token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -24,6 +27,6 @@ export async function POST(req) {
 
     return res;
   } catch (err) {
-    return NextResponse.json({ error: 'حدث خطأ غير متوقع' }, { status: 500 });
+    return NextResponse.json({ error: 'حدث خطأ في إنشاء الجلسة' }, { status: 500 });
   }
 }
