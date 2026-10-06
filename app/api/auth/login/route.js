@@ -1,26 +1,29 @@
 import { NextResponse } from 'next/server';
-import { checkPassword, createSessionToken, SESSION_COOKIE } from '@/lib/auth';
 
 export async function POST(req) {
-  const { password } = await req.json();
+  try {
+    const { password } = await req.json();
 
-  if (!password || typeof password !== 'string') {
-    return NextResponse.json({ error: 'الرجاء إدخال كلمة المرور' }, { status: 400 });
+    let role = null;
+    if (password === '0101') role = 'admin';
+    if (password === '0011') role = 'marketer';
+
+    if (!role) {
+      return NextResponse.json({ error: 'كلمة المرور غير صحيحة' }, { status: 401 });
+    }
+
+    // إرسال رد النجاح وتعيين كوكي الجلسة مباشرة
+    const res = NextResponse.json({ ok: true, role });
+    res.cookies.set('session', role, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 30,
+      path: '/',
+    });
+
+    return res;
+  } catch (err) {
+    return NextResponse.json({ error: 'حدث خطأ غير متوقع' }, { status: 500 });
   }
-
-  const role = await checkPassword(password);
-  if (!role) {
-    return NextResponse.json({ error: 'كلمة المرور غير صحيحة' }, { status: 401 });
-  }
-
-  const token = await createSessionToken(role);
-  const res = NextResponse.json({ ok: true, role });
-  res.cookies.set(SESSION_COOKIE, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 30,
-    path: '/',
-  });
-  return res;
 }
